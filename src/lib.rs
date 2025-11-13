@@ -8,26 +8,29 @@ use regex::Regex;
 mod utils;
 use utils::coletor::ColetorSaida;
 use utils::enviador::Enviador;
+use utils::buffer_texto::BufferTexto;
 
-use crate::utils::coletor;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
-const MIN_LEN: f32 = 2.0;
+const MIN_LEN: f32 = 0.3;
+// const LIMITE_CARACTERES: u8 = 255;
 
 struct WhisperWrapper {
     coletor: ColetorSaida,
     enviador: Arc<Mutex<Enviador>>,
     rodando: Arc<Mutex<bool>>,
+    buffer_texto: Arc<Mutex<BufferTexto>>
 }
 
 impl WhisperWrapper {
-    pub fn new(host: String, porta: u32) -> Result<Self> {
+    pub fn new(host: String, porta: u32, limite_caracteres: u32) -> Result<Self> {
         Ok(
             Self { 
                 coletor: ColetorSaida::new(30.0)?, 
                 enviador: Arc::new(Mutex::new(Enviador::new(host, porta))),
-                rodando: Arc::new(Mutex::new(false))
+                rodando: Arc::new(Mutex::new(false)),
+                buffer_texto: Arc::new(Mutex::new(BufferTexto::new(limite_caracteres)))
             }
         )
     }
@@ -45,6 +48,8 @@ impl WhisperWrapper {
         
         let tx_enviador = Arc::clone(&self.enviador);
         let rx_enviador = Arc::clone(&self.enviador);
+
+        let rx_buffer = Arc::clone(&self.buffer_texto);
 
         std::thread::spawn(move || loop {                    
             // Espera o buffer encher o suficiente pro whisper aceitar
@@ -120,7 +125,9 @@ impl WhisperWrapper {
 
         std::thread::spawn(move || {
             loop {
+                // Esse sleep é extremamente necessário, senão ele fica fominha com o enviador 
                 std::thread::sleep(Duration::from_millis(100));
+
                 // println!(" === Tentando leitura");
                 let mut sender = rx_enviador.lock().unwrap();
                 let Ok(res) = sender.ler() else { 
@@ -134,7 +141,9 @@ impl WhisperWrapper {
                 let Some(texto) = a.get(1) else {
                     continue
                 };
-                println!("{:?}", texto.as_str());
+
+                rx_buffer.lock().unwrap().push(texto.as_str());
+                // println!("{:?}", texto.as_str());
             }
         });
 
@@ -143,8 +152,8 @@ impl WhisperWrapper {
         Ok(())
     }
 
-    pub fn pegar_transcricao(&mut self) {
-
+    pub fn pegar_transcricao(&mut self) -> String {
+        self.buffer_texto.lock().unwrap().get()
     }
 }
 
@@ -154,11 +163,15 @@ mod tests {
 
     #[test]
     fn it_works() -> Result<()> {
-        let mut a = WhisperWrapper::new("localhost".to_string(), 43007)?;
+        let mut a = WhisperWrapper::new("localhost".to_string(), 43007, 512)?;
         a.iniciar_envio()?;
 
         loop {
-            std::thread::sleep(Duration::from_secs(5));
+            let i = a.pegar_transcricao();
+            if !i.is_empty() {
+                println!("Trancrição: {}", i);
+            }
+            std::thread::sleep(Duration::from_millis(500));
         }
 
         // a.pegar_transcricao();
