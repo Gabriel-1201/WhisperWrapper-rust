@@ -14,7 +14,7 @@ use std::sync::{
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
-pub struct ColetarSaida {
+pub struct ColetorSaida {
     buffer: Arc<Mutex<HeapRb<i16>>>,
     pub canais: u16,
     pub samplerate: usize,
@@ -22,7 +22,7 @@ pub struct ColetarSaida {
     stream: Option<Stream>
 }
 
-impl ColetarSaida {
+impl ColetorSaida {
     pub fn new(tam_buffer_segundos: f32) -> Result<Self> {
         let host = cpal::default_host();
         let Some(device) = host.default_output_device() else {
@@ -41,7 +41,7 @@ impl ColetarSaida {
         if canais == 0 { return Err("Nenhum canal de áudio aqui".into()) }
         let tam_total_buffer = (samplerate as f32 * tam_buffer_segundos * canais as f32).floor() as usize;
 
-        Ok(ColetarSaida { 
+        Ok(ColetorSaida { 
             buffer: Arc::new(Mutex::new(HeapRb::<i16>::new(tam_total_buffer))), 
             samplerate,
             canais: canais,

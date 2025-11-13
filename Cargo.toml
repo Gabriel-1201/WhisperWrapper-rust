@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 cpal = "0.16.0"
 ringbuf = "0.4.8"
+regex = "1.12.2"
