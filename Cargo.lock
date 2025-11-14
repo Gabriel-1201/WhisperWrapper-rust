@@ -126,12 +126,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "crate_whispers_treaming_sender"
+name = "crate_whisper_wrapper"
 version = "0.1.0"
 dependencies = [
  "cpal",
  "regex",
  "ringbuf",
+ "wasm-bindgen",
 ]
 
 [[package]]

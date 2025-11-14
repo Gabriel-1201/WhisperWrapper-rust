@@ -1,14 +1,11 @@
-use std::net::{TcpListener, TcpStream};
+use std::net::TcpStream;
 use std::io::{Read, Write};
-use std::time::{Duration, Instant};
-use ringbuf::{HeapRb, SharedRb, traits::*};
-use std::sync::{Arc, Mutex};
-use regex::Regex;
+use std::time::Duration;
+// use ringbuf::{HeapRb, SharedRb, traits::*};
+// use std::sync::{Arc, Mutex};
+// use regex::Regex;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
-
-const MIN_LEN: f32 = 2.0;
-
 
 pub struct Enviador {
     host: String,

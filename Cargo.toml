@@ -1,9 +1,13 @@
 [package]
-name = "crate_whispers_treaming_sender"
+name = "crate_whisper_wrapper"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 cpal = "0.16.0"
 ringbuf = "0.4.8"
 regex = "1.12.2"
+wasm-bindgen = "0.2"
