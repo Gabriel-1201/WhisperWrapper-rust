@@ -9,7 +9,7 @@ mod utils;
 use utils::enviador::Enviador;
 use utils::buffer_texto::BufferTexto;
 
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+// type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 const MIN_LEN: f32 = 0.5;
 // const LIMITE_CARACTERES: u8 = 255;
@@ -25,8 +25,10 @@ pub struct WhisperWrapper {
     buffer_audio: Arc<Mutex<HeapRb<i16>>>
 }
 
+#[wasm_bindgen]
 impl WhisperWrapper {
-    pub fn new(host: String, porta: u32, limite_caracteres: u32, audio_samplerate: u32, audio_canais: u32) -> Result<Self> {
+    #[wasm_bindgen]
+    pub fn new(host: String, porta: u32, limite_caracteres: u32, audio_samplerate: u32, audio_canais: u32) -> Result<Self, String> {
         Ok(
             Self { 
                 audio_samplerate,
@@ -39,6 +41,7 @@ impl WhisperWrapper {
         )
     }
 
+    #[wasm_bindgen]
     pub fn inserir_amostra(&mut self, amostras: Vec<i16>) {
         let buffer_audio = Arc::clone(&self.buffer_audio);
         let mut lock = buffer_audio.lock().unwrap();
@@ -47,7 +50,8 @@ impl WhisperWrapper {
         }
     }
 
-    pub fn iniciar_envio(&mut self) -> Result<()> {
+    #[wasm_bindgen]
+    pub fn iniciar_envio(&mut self) -> Result<(), String> {
         // if self.rodando.lock().unwrap().eq(&false) {
         //     self.coletor.coletar()?;
         // }
@@ -165,6 +169,7 @@ impl WhisperWrapper {
         Ok(())
     }
 
+    #[wasm_bindgen]
     pub fn pegar_transcricao(&mut self) -> String {
         self.buffer_texto.lock().unwrap().get()
     }
