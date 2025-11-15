@@ -5,63 +5,65 @@ use regex::Regex;
 use wasm_bindgen::prelude::*;
 
 mod utils;
-// use utils::coletor::ColetorSaida;
+use utils::coletor::ColetorSaida;
 use utils::enviador::Enviador;
 use utils::buffer_texto::BufferTexto;
 
-// type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 const MIN_LEN: f32 = 0.5;
 // const LIMITE_CARACTERES: u8 = 255;
 
-#[wasm_bindgen]
+// #[wasm_bindgen]
 pub struct WhisperWrapper {
-    // coletor: ColetorSaida,
+    coletor: ColetorSaida,
     enviador: Arc<Mutex<Enviador>>,
     rodando: Arc<Mutex<bool>>,
-    audio_samplerate: u32,
-    audio_canais: u32,
+    // audio_samplerate: u32,
+    // audio_canais: u32,
     buffer_texto: Arc<Mutex<BufferTexto>>,
-    buffer_audio: Arc<Mutex<HeapRb<i16>>>
+    // buffer_audio: Arc<Mutex<HeapRb<i16>>>
 }
 
-#[wasm_bindgen]
+// #[wasm_bindgen]
 impl WhisperWrapper {
-    #[wasm_bindgen]
-    pub fn new(host: String, porta: u32, limite_caracteres: u32, audio_samplerate: u32, audio_canais: u32) -> Result<Self, String> {
+    // #[wasm_bindgen]
+    // pub fn new(host: String, porta: u32, limite_caracteres: u32, audio_samplerate: u32, audio_canais: u32) -> Result<Self> {
+    pub fn new(host: String, porta: u32, limite_caracteres: u32) -> Result<Self> {
         Ok(
             Self { 
-                audio_samplerate,
-                audio_canais,
+                // audio_samplerate,
+                // audio_canais,
                 enviador: Arc::new(Mutex::new(Enviador::new(host, porta))),
                 rodando: Arc::new(Mutex::new(false)),
                 buffer_texto: Arc::new(Mutex::new(BufferTexto::new(limite_caracteres))),
-                buffer_audio: Arc::new(Mutex::new(HeapRb::<i16>::new((audio_samplerate * 30 * audio_canais) as usize)))
+                coletor: ColetorSaida::new(30.0)?
+                // buffer_audio: Arc::new(Mutex::new(HeapRb::<i16>::new((audio_samplerate * 30 * audio_canais) as usize)))
             }
         )
     }
 
-    #[wasm_bindgen]
-    pub fn inserir_amostra(&mut self, amostras: Vec<i16>) {
-        let buffer_audio = Arc::clone(&self.buffer_audio);
-        let mut lock = buffer_audio.lock().unwrap();
-        for amostra in amostras {
-            lock.push_overwrite(amostra);
+    // #[wasm_bindgen]
+    // pub fn inserir_amostra(&mut self, amostras: Vec<i16>) {
+    //     let buffer_audio = Arc::clone(&self.buffer_audio);
+    //     let mut lock = buffer_audio.lock().unwrap();
+    //     for amostra in amostras {
+    //         lock.push_overwrite(amostra);
+    //     }
+    // }
+
+    // #[wasm_bindgen]
+    pub fn iniciar_envio(&mut self) -> Result<()> {
+        if self.rodando.lock().unwrap().eq(&false) {
+            self.coletor.coletar()?;
         }
-    }
 
-    #[wasm_bindgen]
-    pub fn iniciar_envio(&mut self) -> Result<(), String> {
-        // if self.rodando.lock().unwrap().eq(&false) {
-        //     self.coletor.coletar()?;
-        // }
-
-        let samplerate_buffer = self.audio_samplerate;
+        let samplerate_buffer = self.coletor.samplerate;
         let samplerate_alvo = 16_000;
-        let canais = self.audio_canais;
+        let canais = self.coletor.canais;
         let razao_samplerates = (samplerate_buffer / samplerate_alvo) as usize;
         // let buffer_audio = self.coletor.pegar_buffer();
-        let buffer_audio = Arc::clone(&self.buffer_audio);
+        let buffer_audio = self.coletor.pegar_buffer();
         
         let tx_enviador = Arc::clone(&self.enviador);
         let rx_enviador = Arc::clone(&self.enviador);
@@ -169,7 +171,7 @@ impl WhisperWrapper {
         Ok(())
     }
 
-    #[wasm_bindgen]
+    // #[wasm_bindgen]
     pub fn pegar_transcricao(&mut self) -> String {
         self.buffer_texto.lock().unwrap().get()
     }
@@ -177,131 +179,131 @@ impl WhisperWrapper {
 
 #[cfg(test)]
 mod tests {
-    // use super::*;
+    use super::*;
 
-    // #[test]
-    // fn it_works() -> Result<()> {
-    //     let mut a = WhisperWrapper::new("localhost".to_string(), 43007, 512)?;
-    //     a.iniciar_envio()?;
+    #[test]
+    fn it_works() -> Result<()> {
+        let mut a = WhisperWrapper::new("localhost".to_string(), 43007, 512)?;
+        a.iniciar_envio()?;
 
-    //     loop {
-    //         let i = a.pegar_transcricao();
-    //         if !i.is_empty() {
-    //             println!("Trancrição: {}", i);
-    //         }
-    //         std::thread::sleep(Duration::from_millis(500));
-    //     }
+        loop {
+            let i = a.pegar_transcricao();
+            if !i.is_empty() {
+                println!("Trancrição: {}", i);
+            }
+            std::thread::sleep(Duration::from_millis(500));
+        }
 
-    //     // a.pegar_transcricao();
-    //     // let mut sender = Arc::new(Mutex::new(Enviador::new("localhost".to_string(), 43007)));
-    //     // // let mut sender = Enviador::new("localhost".to_string(), 43007);
-    //     // let mut coletar_saida = ColetorSaida::new(10.0)?;
-    //     // let buffer = coletar_saida.pegar_buffer();
-    //     // let samplerate_buffer: usize = coletar_saida.samplerate;
-    //     // let samplerate_alvo = 16_000;
-    //     // let canais = coletar_saida.canais;
-    //     // let razao_samplerates = samplerate_buffer / samplerate_alvo;
-    //     // coletar_saida.coletar()?;
+        // a.pegar_transcricao();
+        // let mut sender = Arc::new(Mutex::new(Enviador::new("localhost".to_string(), 43007)));
+        // // let mut sender = Enviador::new("localhost".to_string(), 43007);
+        // let mut coletar_saida = ColetorSaida::new(10.0)?;
+        // let buffer = coletar_saida.pegar_buffer();
+        // let samplerate_buffer: usize = coletar_saida.samplerate;
+        // let samplerate_alvo = 16_000;
+        // let canais = coletar_saida.canais;
+        // let razao_samplerates = samplerate_buffer / samplerate_alvo;
+        // coletar_saida.coletar()?;
                 
-    //     // // Espera o buffer encher o suficiente pro whisper aceitar
-    //     // let mut buffer_cheio: bool = false;
-    //     // while !buffer_cheio {
-    //     //     buffer_cheio = buffer.lock().unwrap().occupied_len() >= (MIN_LEN * samplerate_buffer as f32) as usize;
-    //     // }
+        // // Espera o buffer encher o suficiente pro whisper aceitar
+        // let mut buffer_cheio: bool = false;
+        // while !buffer_cheio {
+        //     buffer_cheio = buffer.lock().unwrap().occupied_len() >= (MIN_LEN * samplerate_buffer as f32) as usize;
+        // }
 
-    //     // let n_sender = Arc::clone(&sender);
-    //     // std::thread::spawn(move || {
-    //     //     loop {
-    //     //         std::thread::sleep(Duration::from_millis(100));
-    //     //         // println!(" === Tentando leitura");
-    //     //         let mut sender = n_sender.lock().unwrap();
-    //     //         let Ok(res) = sender.ler() else { 
-    //     //             // println!(" === Nada pra ler");
-    //     //             continue 
-    //     //         };
-    //     //         let re = Regex::new(r"^\d*\s\d*\s(.*)\n").unwrap();
-    //     //         let Some(a) = re.captures(res.as_str()) else {
-    //     //             continue
-    //     //         };
-    //     //         let Some(texto) = a.get(1) else {
-    //     //             continue
-    //     //         };
-    //     //         println!("{:?}", texto.as_str());
-    //     //     }
-    //     // });
+        // let n_sender = Arc::clone(&sender);
+        // std::thread::spawn(move || {
+        //     loop {
+        //         std::thread::sleep(Duration::from_millis(100));
+        //         // println!(" === Tentando leitura");
+        //         let mut sender = n_sender.lock().unwrap();
+        //         let Ok(res) = sender.ler() else { 
+        //             // println!(" === Nada pra ler");
+        //             continue 
+        //         };
+        //         let re = Regex::new(r"^\d*\s\d*\s(.*)\n").unwrap();
+        //         let Some(a) = re.captures(res.as_str()) else {
+        //             continue
+        //         };
+        //         let Some(texto) = a.get(1) else {
+        //             continue
+        //         };
+        //         println!("{:?}", texto.as_str());
+        //     }
+        // });
         
-    //     // loop {
-    //     //     // Espera o buffer encher antes de fazer qualque coisa
-    //     //     println!(" -- Nova iteração -- ");
-    //     //     let inicio_coleta_buffer = Instant::now();
-    //     //     let mut buffer_cheio: bool = false;
-    //     //     while !buffer_cheio {
-    //     //         let buffer_lock = buffer.lock().unwrap();
-    //     //         buffer_cheio = buffer_lock.occupied_len() >= (MIN_LEN * samplerate_buffer as f32) as usize;
+        // loop {
+        //     // Espera o buffer encher antes de fazer qualque coisa
+        //     println!(" -- Nova iteração -- ");
+        //     let inicio_coleta_buffer = Instant::now();
+        //     let mut buffer_cheio: bool = false;
+        //     while !buffer_cheio {
+        //         let buffer_lock = buffer.lock().unwrap();
+        //         buffer_cheio = buffer_lock.occupied_len() >= (MIN_LEN * samplerate_buffer as f32) as usize;
                 
-    //     //         if buffer_lock.occupied_len() == 0 { continue; }
+        //         if buffer_lock.occupied_len() == 0 { continue; }
 
-    //     //         // Se o áudio estiver parado, envia oq tiver aí.
-    //     //         if inicio_coleta_buffer.elapsed() > Duration::from_millis((MIN_LEN * 1000.0) as u64) {
-    //     //             // println!("Mt tempo sem nova amostra, mandando oq tem aqui");
-    //     //             break;
-    //     //         }
-    //     //     }
+        //         // Se o áudio estiver parado, envia oq tiver aí.
+        //         if inicio_coleta_buffer.elapsed() > Duration::from_millis((MIN_LEN * 1000.0) as u64) {
+        //             // println!("Mt tempo sem nova amostra, mandando oq tem aqui");
+        //             break;
+        //         }
+        //     }
 
-    //     //     let mut copia_buffer: Vec<i16> = Vec::new();            
-    //     //     {
-    //     //         // Escopo que copia todo o buffer para uma lista de copia
-    //     //         // Escopo pra poder travar o mutex e impedir que seja adicionado mais alguma coisa lá
-    //     //         let mut buffer = buffer.lock().unwrap();
-    //     //         println!("Buffer tem {} segundos de áudio)", buffer.occupied_len() as f32 / samplerate_buffer as f32);
+        //     let mut copia_buffer: Vec<i16> = Vec::new();            
+        //     {
+        //         // Escopo que copia todo o buffer para uma lista de copia
+        //         // Escopo pra poder travar o mutex e impedir que seja adicionado mais alguma coisa lá
+        //         let mut buffer = buffer.lock().unwrap();
+        //         println!("Buffer tem {} segundos de áudio)", buffer.occupied_len() as f32 / samplerate_buffer as f32);
 
-    //     //         // println!("Copiando buffer");
-    //     //         buffer.iter().for_each(|i| copia_buffer.push(i.clone()) );
-    //     //         println!("{} amostras copiadas", copia_buffer.iter().count());
+        //         // println!("Copiando buffer");
+        //         buffer.iter().for_each(|i| copia_buffer.push(i.clone()) );
+        //         println!("{} amostras copiadas", copia_buffer.iter().count());
 
-    //     //         // Tira todas as amostras até que sobre apenas o necessário para sobreposição
-    //     //         // println!("Existem {} ({}s) amostras no buffer", buffer.occupied_len(), buffer.occupied_len() / samplerate_buffer);
-    //     //         while buffer.occupied_len() > 0 {
-    //     //             buffer.try_pop();
-    //     //         }
-    //     //     }
+        //         // Tira todas as amostras até que sobre apenas o necessário para sobreposição
+        //         // println!("Existem {} ({}s) amostras no buffer", buffer.occupied_len(), buffer.occupied_len() / samplerate_buffer);
+        //         while buffer.occupied_len() > 0 {
+        //             buffer.try_pop();
+        //         }
+        //     }
 
-    //     //     // Remoção dos canais extras
-    //     //     match canais {
-    //     //         1 => {  }
-    //     //         2 => {
-    //     //             copia_buffer = copia_buffer.iter().enumerate()
-    //     //                 .filter(|i| i.0 % 2 == 0).map(|(_, &a)| a).collect();
-    //     //         }
-    //     //         _ => {
-    //     //             copia_buffer = copia_buffer.iter().enumerate()
-    //     //                 .filter(|i| i.0 % canais as usize == 0).map(|(_, &a)| a).collect();
-    //     //         }
-    //     //     }
+        //     // Remoção dos canais extras
+        //     match canais {
+        //         1 => {  }
+        //         2 => {
+        //             copia_buffer = copia_buffer.iter().enumerate()
+        //                 .filter(|i| i.0 % 2 == 0).map(|(_, &a)| a).collect();
+        //         }
+        //         _ => {
+        //             copia_buffer = copia_buffer.iter().enumerate()
+        //                 .filter(|i| i.0 % canais as usize == 0).map(|(_, &a)| a).collect();
+        //         }
+        //     }
 
-    //     //     // Resampling seboso
-    //     //     let copia_buffer: Vec<i16> = copia_buffer.iter().enumerate()
-    //     //         .filter(|i| i.0 % razao_samplerates == 0).map(|(_, &a)| a).collect();
+        //     // Resampling seboso
+        //     let copia_buffer: Vec<i16> = copia_buffer.iter().enumerate()
+        //         .filter(|i| i.0 % razao_samplerates == 0).map(|(_, &a)| a).collect();
 
-    //     //     // println!("Preparando envio");
-    //     //     match sender.lock().unwrap().enviar_sequencia(copia_buffer) {
-    //     //         Ok(_) => {
-    //     //             // println!("Enviado");
-    //     //             // match sender.ler() {
-    //     //             //     Ok(texto) => { 
-    //     //             //         println!(" === {}", texto);
-    //     //             //     },
-    //     //             //     Err(e) => { 
-    //     //             //         println!(" === Erro ao ler: {}", e);
-    //     //             //     }
-    //     //             // }
-    //     //         }
-    //     //         Err(e) => { 
-    //     //                 println!(" === Erro ao enviar: {}", e); 
-    //     //                 continue; 
-    //     //         }
-    //     //     };
-    //     // }
-    //     Ok(())
-    // }
+        //     // println!("Preparando envio");
+        //     match sender.lock().unwrap().enviar_sequencia(copia_buffer) {
+        //         Ok(_) => {
+        //             // println!("Enviado");
+        //             // match sender.ler() {
+        //             //     Ok(texto) => { 
+        //             //         println!(" === {}", texto);
+        //             //     },
+        //             //     Err(e) => { 
+        //             //         println!(" === Erro ao ler: {}", e);
+        //             //     }
+        //             // }
+        //         }
+        //         Err(e) => { 
+        //                 println!(" === Erro ao enviar: {}", e); 
+        //                 continue; 
+        //         }
+        //     };
+        // }
+        Ok(())
+    }
 }
