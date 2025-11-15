@@ -11,7 +11,7 @@ use utils::buffer_texto::BufferTexto;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
-const MIN_LEN: f32 = 0.5;
+// const MIN_LEN: f32 = 0.5;
 // const LIMITE_CARACTERES: u8 = 255;
 
 // #[wasm_bindgen]
@@ -23,13 +23,14 @@ pub struct WhisperWrapper {
     // audio_canais: u32,
     buffer_texto: Arc<Mutex<BufferTexto>>,
     // buffer_audio: Arc<Mutex<HeapRb<i16>>>
+    comprimento_minimo: f32
 }
 
 // #[wasm_bindgen]
 impl WhisperWrapper {
     // #[wasm_bindgen]
     // pub fn new(host: String, porta: u32, limite_caracteres: u32, audio_samplerate: u32, audio_canais: u32) -> Result<Self> {
-    pub fn new(host: String, porta: u32, limite_caracteres: u32) -> Result<Self> {
+    pub fn new(host: String, porta: u32, limite_caracteres: u32, comprimento_minimo: f32) -> Result<Self> {
         Ok(
             Self { 
                 // audio_samplerate,
@@ -37,7 +38,8 @@ impl WhisperWrapper {
                 enviador: Arc::new(Mutex::new(Enviador::new(host, porta))),
                 rodando: Arc::new(Mutex::new(false)),
                 buffer_texto: Arc::new(Mutex::new(BufferTexto::new(limite_caracteres))),
-                coletor: ColetorSaida::new(30.0)?
+                coletor: ColetorSaida::new(30.0)?,
+                comprimento_minimo
                 // buffer_audio: Arc::new(Mutex::new(HeapRb::<i16>::new((audio_samplerate * 30 * audio_canais) as usize)))
             }
         )
@@ -70,11 +72,13 @@ impl WhisperWrapper {
 
         let rx_buffer = Arc::clone(&self.buffer_texto);
 
+        let comprimento_minimo = self.comprimento_minimo.clone();
+
         std::thread::spawn(move || loop {                    
             // Espera o buffer encher o suficiente pro whisper aceitar
             let mut buffer_cheio: bool = false;
             while !buffer_cheio {
-                buffer_cheio = buffer_audio.lock().unwrap().occupied_len() >= (MIN_LEN * samplerate_buffer as f32) as usize;
+                buffer_cheio = buffer_audio.lock().unwrap().occupied_len() >= (comprimento_minimo * samplerate_buffer as f32) as usize;
             }
             
             loop {
@@ -83,13 +87,13 @@ impl WhisperWrapper {
                 let inicio_coleta_buffer = Instant::now();
                 let mut buffer_cheio: bool = false;
                 while !buffer_cheio {
-                    let buffer_lock = buffer_audio.lock().unwrap();
-                    buffer_cheio = buffer_lock.occupied_len() >= (MIN_LEN * samplerate_buffer as f32) as usize;
+                    let buffer_lock: std::sync::MutexGuard<'_, ringbuf::SharedRb<ringbuf::storage::Heap<i16>>> = buffer_audio.lock().unwrap();
+                    buffer_cheio = buffer_lock.occupied_len() >= (comprimento_minimo * samplerate_buffer as f32) as usize;
                     
                     if buffer_lock.occupied_len() == 0 { continue; }
 
                     // Se o áudio estiver parado, envia oq tiver aí.
-                    if inicio_coleta_buffer.elapsed() > Duration::from_millis((MIN_LEN * 1000.0) as u64) {
+                    if inicio_coleta_buffer.elapsed() > Duration::from_millis((1000.0) as u64) {
                         // println!("Mt tempo sem nova amostra, mandando oq tem aqui");
                         break;
                     }
@@ -183,7 +187,7 @@ mod tests {
 
     #[test]
     fn it_works() -> Result<()> {
-        let mut a = WhisperWrapper::new("localhost".to_string(), 43007, 512)?;
+        let mut a = WhisperWrapper::new("localhost".to_string(), 43007, 512, 2.0)?;
         a.iniciar_envio()?;
 
         loop {
