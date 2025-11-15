@@ -88,4 +88,20 @@ impl ColetorSaida {
         }
         Ok(())
     }
+
+    pub fn parar(&mut self) -> Result<()> {
+        match &self.stream {
+            Some(stream) => { stream.pause()? },
+            None => {}
+        }
+        Ok(())
+    }
+
+    pub fn retomar(&mut self) -> Result<()> {
+        match &self.stream {
+            Some(stream) => { stream.play()? },
+            None => {}
+        }
+        Ok(())
+    }
 }

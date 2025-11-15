@@ -179,6 +179,16 @@ impl WhisperWrapper {
     pub fn pegar_transcricao(&mut self) -> String {
         self.buffer_texto.lock().unwrap().get()
     }
+
+    pub fn parar(&mut self) -> Result<()>{
+        self.coletor.parar()?;
+        Ok(())
+    }
+
+    pub fn retomar(&mut self) -> Result<()> {
+        self.coletor.retomar()?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
